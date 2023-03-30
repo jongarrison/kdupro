@@ -12,7 +12,10 @@ The KduPRO measures the light intensity in the red, green, blue and PAR (Photosy
 
 The affordable cost, along with ease of build and use, make this instrument a valuable tool for anyone interested in getting involved in water quality monitoring programs.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/Matevkip44U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<p align="center">
+<a href="https://www.youtube.com/watch?v=Matevkip44U">
+<img width="500" src="./docs/img_docs/caption_youtube_kdupro.PNG">
+</p>
 
 
 ## Installation
