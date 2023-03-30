@@ -6,13 +6,13 @@ It is based on a modular system of light sensors, independent of each other, mea
 
 The KduPRO measures the light intensity in the red, green, blue and PAR (Photosynthetically Active Radiation) bands. The configuration of the KduPRO brings the possibility to calculate the Kd (the diffuse attenuation coefficient) with one module doing a vertical profile or with an array of modules as a moored buoy. 
 
-<p align="center">
+<p align="center" width="100%">
 <img width="500" src="./docs/img_docs/kdupro_draw.png">
 </p>
 
 The affordable cost, along with ease of build and use, make this instrument a valuable tool for anyone interested in getting involved in water quality monitoring programs.
 
-<p align="center">
+<p align="center" width="100%">
 <a href="https://www.youtube.com/watch?v=Matevkip44U">
 <img width="500" src="./docs/img_docs/caption_youtube_kdupro.PNG">
 </p>
@@ -31,7 +31,7 @@ The [User’s guide and technical documentation](https://zenodo.org/record/57211
 
 The [Kduino Data Analysis](https://git.csic.es/kduino/kduino-data-analysis) is a python module designed for opening and analyzing data files from KdUINO instrumentation (such as the KduPRO). Also, it provides methods to generate plots and convert data files into netCDF, csv, json and pickle format.
 
-<p align="center">
+<p align="center" width="100%">
 <img width="500" src="./docs/img_docs/buoy_kdupro.png">
 </p>
 
@@ -41,7 +41,7 @@ The [Kduino Data Analysis](https://git.csic.es/kduino/kduino-data-analysis) is a
 
 <hr>
 
-<p align="center">
+<p align="center" width="100%">
 <img width="150" src="./docs/img_docs/logo.png">
 </p>
 
