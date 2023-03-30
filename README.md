@@ -1,6 +1,6 @@
 # KduPRO
 
-KduPRO [Rodero et al, 2022](http://dx.doi.org/10.3389/fmars.2022.1004159) is a low-cost and do-it-yourself moored system evolved from the KdUINO [Bardaji et al, 2016](https://doi.org/10.3390/s16030373) which estimates the water transparency.
+KduPRO ([Rodero et al, 2022](http://dx.doi.org/10.3389/fmars.2022.1004159)) is a low-cost and do-it-yourself moored system evolved from the KdUINO ([Bardaji et al, 2016](https://doi.org/10.3390/s16030373)) which estimates the water transparency.
 
 It is based on a modular system of light sensors, independent of each other, measuring the irradiance at different depths. The depth of each module can be modified according to the requirements of the project or the environment, offering the user a custom array of sensors. 
 
