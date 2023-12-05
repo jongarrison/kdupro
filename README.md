@@ -1,3 +1,5 @@
+See original project: https://git.csic.es/kduino/kdupro
+
 # KduPRO
 
 KduPRO ([Rodero et al, 2022](http://dx.doi.org/10.3389/fmars.2022.1004159)) is a low-cost and do-it-yourself moored system evolved from the KdUINO ([Bardaji et al, 2016](https://doi.org/10.3390/s16030373)) which estimates the water transparency.
