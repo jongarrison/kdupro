@@ -6,6 +6,10 @@
 #include "Adafruit_TCS34725.h"
 #include <ESP8266WiFi.h>
 
+#include "sCommand.h"
+sCommand sC;
+#define SERIALCOMMAND_DEBUG
+
 // Settings 
 int real_time_clock_setup = 120;     // Time to wait to set up time of RTC (in seconds)
 int initial_wait = 60;               // Time to wait before start the loop (in seconds)
@@ -87,10 +91,17 @@ void save_metadata();
 void save_header();
 void actions();
 void update_rtc();
+void interactive_update_rtc();
+void interactive_update_rtc_serial(sCommand& sC, Stream& S);
 
 void generate_metadata_id();
 void generate_filename();
 String get_datetime();
+
+struct Commands {
+    const char *SET_RTC = "rtc";
+};
+Commands commands;
 
 void setup () {
     // CONFIGURATION
@@ -116,6 +127,9 @@ void setup () {
 
     // Serial
     Serial.begin(BAUDRATE);
+
+    sC.addCommand(commands.SET_RTC, interactive_update_rtc_serial);
+
     delay(100);
     Serial.println("");
     // RTC
@@ -131,8 +145,7 @@ void setup () {
 
     //Update time of RTC
     delay(100);
-    Serial.print("Write now the actual date and time (YYYYMMDDhhmmss)");
-    update_rtc();
+    // interactive_update_rtc();
 
     // Adjust RTC with last compilation time. Not necessary, commented.
     /* if (! rtc.initialized()) {
@@ -193,6 +206,7 @@ void setup () {
 void loop () {
     // Read time
     now = rtc.now();
+    sC.readSerial(Serial);    
     
     // Check if it is time to measure
     if (now.minute() % period == 0){
@@ -582,6 +596,83 @@ void actions() {
     }
 }
 
+void interactive_update_rtc_serial(sCommand& sC, Stream& S) {
+
+    if ( sC.next() == NULL) {
+        S.println("Hello.");
+    } else {
+        S.printf("Hello %s, it is nice to meet you.\n",sC.current());
+
+        char inByte = 0;
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+
+        for (int date_position = 0; date_position < 14; date_position++) {
+            // get incoming byte
+            inByte = sC.current()[date_position];
+            switch (date_position) {
+                case 0:
+                    year += (inByte - '0')*1000;
+                    break;
+                case 1:
+                    year += (inByte - '0')*100;
+                    break;
+                case 2:
+                    year += (inByte - '0')*10;
+                    break;
+                case 3:
+                    year += (inByte - '0');
+                    break;
+                case 4:
+                    month += (inByte - '0')*10;
+                    break;
+                case 5:
+                    month += (inByte - '0');
+                    break;
+                case 6:
+                    day += (inByte - '0')*10;
+                    break;
+                case 7:
+                    day += (inByte - '0');
+                    break;
+                case 8:
+                    hour += (inByte - '0')*10;
+                    break;
+                case 9:
+                    hour += (inByte - '0');
+                    break;
+                case 10:
+                    minute += (inByte - '0')*10;
+                    break;
+                case 11:
+                    minute += (inByte - '0');
+                    break;
+                case 12:
+                    second += (inByte - '0')*10;
+                    break;
+                case 13:
+                    second += (inByte - '0');
+                    break;
+            }
+        }
+        rtc.adjust(DateTime(year, month, day, hour, minute, second));
+        // Read time
+        Serial.println("Real Time Clock Updated");
+        serial_date();
+    }
+
+
+}
+
+void interactive_update_rtc() {
+    Serial.print("Write now the actual date and time (YYYYMMDDhhmmss)");
+    update_rtc();
+}
+
 void update_rtc() {
     int watchdog_time = 100; // To do it not blocking
     int inByte = 0;
@@ -660,7 +751,7 @@ String get_datetime() {
 
     now = rtc.now();
     char buffer [31] = "";
-    sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02dZ", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+    sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d:%03dZ", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), millis() % 1000);
     datetime = String(buffer);
 
     return datetime;
