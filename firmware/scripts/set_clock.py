@@ -1,3 +1,7 @@
+#This script is run from within the platformio environment by using:
+# pio run -t setclock
+
+#See extra_scripts docs: https://docs.platformio.org/en/latest/projectconf/advanced_scripting.html
 # env: dict
 # Import: function
 

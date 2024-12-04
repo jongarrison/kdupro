@@ -5,18 +5,20 @@
 #include "RTClib.h"
 #include "Adafruit_TCS34725.h"
 #include <ESP8266WiFi.h>
-
 #include "sCommand.h"
+#include <SimpleTimer.h>
+
 sCommand sC;
 #define SERIALCOMMAND_DEBUG
 
 // Settings 
 int real_time_clock_setup = 120;     // Time to wait to set up time of RTC (in seconds)
-int initial_wait = 60;               // Time to wait before start the loop (in seconds)
+int initial_wait_s = 60;               // Time to wait before start the loop (in seconds)
 
 int measures = 60;                   // Number of measurements to do[1, 59]
-int period = 1;                      // Sampling period (in minutes) [1, 60]
+int period_ms = 60000;                      // Sampling period (ms)
 int sample_counter = 1;              // Counter of measurements
+int mainTimerId = 0;
 
 float depth = 0.5;                   // Absolute depth of the device [0.1, 30] (in meters)
 
@@ -67,8 +69,6 @@ String datetime = "YYYY-MM-DDThh:mm:ssZ";
 #define BLUELED 2
 #define BATPIN A0 // Power management
 
-// Communication protocol
-#define UPDATE_RTC 'T'
 // Vars
 RTC_PCF8523 rtc;
 const int chipSelect_SD = 15;
@@ -77,29 +77,29 @@ uint16_t r, g, b, c;
 float battery_level;
 DateTime now;
 String filename;
+SimpleTimer timer(Serial); //Providing the Serial object is only necessary to see debug output
 
 // Function declaration
 void measure_TCS34725();
-void serial_data();
-void serial_metadata();
-void serial_header();
-void serial_date();
-void save_data();
-void save_new_line();
-void save_date();
-void save_metadata();
+void print_serial_rgb_data();
+void print_serial_metadata();
+void print_serial_header();
+void print_serial_date();
+void sd_save_data();
+void sd_save_new_line();
+void sd_save_date();
+void sd_save_metadata();
 void save_header();
-void actions();
-void update_rtc();
-void interactive_update_rtc();
-void interactive_update_rtc_serial(sCommand& sC, Stream& S);
+void update_rtc_serial(sCommand& sC, Stream& S);
+void get_rtc_serial(sCommand& sC, Stream& S);
 
 void generate_metadata_id();
 void generate_filename();
 String get_datetime();
 
 struct Commands {
-    const char *SET_RTC = "rtc";
+    const char *SET_RTC = "T";
+    const char *GET_RTC = "GT";
 };
 Commands commands;
 
@@ -128,7 +128,8 @@ void setup () {
     // Serial
     Serial.begin(BAUDRATE);
 
-    sC.addCommand(commands.SET_RTC, interactive_update_rtc_serial);
+    sC.addCommand(commands.SET_RTC, update_rtc_serial);
+    sC.addCommand(commands.GET_RTC, get_rtc_serial);
 
     delay(100);
     Serial.println("");
@@ -141,19 +142,7 @@ void setup () {
             delay(10000);
         }
     }
-    Serial.println(" Done.");
-
-    //Update time of RTC
-    delay(100);
-    // interactive_update_rtc();
-
-    // Adjust RTC with last compilation time. Not necessary, commented.
-    /* if (! rtc.initialized()) {
-        Serial.println("RTC is NOT running!");
-        // following line sets the RTC to the date & time this sketch was compiled
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        // This line sets the RTC with an explicit date & time, for example to set
-    }*/
+    Serial.println("RTC Init Done.");
     
     // SD
     Serial.print("Initializing SD card.");
@@ -165,70 +154,62 @@ void setup () {
             delay(10000);
         }
     }
-    Serial.println(" Done.");
+    Serial.println("SD Init Done.");
     
     // TCS34725
     Serial.print("Initializing TCS34725.");
-    if (tcs.begin()) {
-        tcs.clearInterrupt();
-        Serial.println(" Done.");
-    } else {
+    while (!tcs.begin()) {
         digitalWrite(REDLED, LOW);
-        while (1){
-            Serial.println("No TCS34725 found");
-            delay(10000);
-        }
+        Serial.println("No TCS34725 found");
+        delay(10000);
     }
-
+    digitalWrite(REDLED, HIGH);
+    tcs.clearInterrupt();
+    Serial.println("TCS34725 Init Done.");
+    
+    
     // Initial wait
     Serial.print("Waiting ");
-    Serial.print(initial_wait);
+    Serial.print(initial_wait_s);
     Serial.println(" seconds");
-    delay(initial_wait*1000);
 
-    // generate metadata ids
-    generate_metadata_id();
+    timer.setTimeout(initial_wait_s * 1000, [](){
+        digitalWrite(BLUELED, HIGH);
 
-    // set name of the file
-    generate_filename();
 
-    // Write metadata and header into file.txt
-    save_metadata();
-    save_header();
+        generate_metadata_id();
+        generate_filename();
+        // Write metadata and header into file.txt
+        sd_save_metadata();
+        save_header();
+        // Send metadata and header through serial communication
+        print_serial_metadata();
+        print_serial_header();
 
-    // Send metadata and header through serial communication
-    serial_metadata();
-    serial_header();
+        digitalWrite(BLUELED, HIGH);
 
-    digitalWrite(BLUELED, HIGH);
-}
+        //Set up the actual measurement schedule
 
-void loop () {
-    // Read time
-    now = rtc.now();
-    sC.readSerial(Serial);    
-    
-    // Check if it is time to measure
-    if (now.minute() % period == 0){
-        if (now.second() == 0){
+        mainTimerId = timer.setInterval(period_ms, [](){
             // Save time
-            save_date();
-            serial_date();
+            sd_save_date();
+            print_serial_date();
             
             // Measurement
             for (int i = 0; i < measures; i++) {
                 measure_TCS34725();
-                save_data();
-                serial_data();
+                sd_save_data();
+                print_serial_rgb_data();
             }
-            save_new_line();
-            // Just to check time
-            now = rtc.now();
-            serial_date();
-        }
-    }
-    actions();
-    delay(500);
+            sd_save_new_line();
+        });
+    });
+}
+
+void loop () {
+    // Read time
+    sC.readSerial(Serial);
+    timer.run();    
 }
 
 ////////////////////////////////////////////////////////////
@@ -278,12 +259,12 @@ void measure_TCS34725(){
 //////////////////// SERIAL COMMUNICATION //////////////////
 ////////////////////////////////////////////////////////////
 
-void serial_date(){
+void print_serial_date(){
     /*It sends the data throught the serial  communication*/
     Serial.println(get_datetime());
 }
 
-void serial_data(){
+void print_serial_rgb_data(){
     /*It sends the data throught the serial  communication*/
     Serial.print(" ");
     Serial.print(r, DEC);
@@ -296,15 +277,15 @@ void serial_data(){
     Serial.println("");
 }
 
-void serial_metadata(){
+void print_serial_metadata(){
     /*It sends the metadata info throught the serial  communication*/
     Serial.println("METADATA");
-    Serial.print("initial_wait: ");
-    Serial.println(initial_wait, DEC);
+    Serial.print("initial_wait_s: ");
+    Serial.println(initial_wait_s, DEC);
     Serial.print("measures: ");
     Serial.println(measures, DEC);
-    Serial.print("period: ");
-    Serial.println(period, DEC);
+    Serial.print("period_ms: ");
+    Serial.println(period_ms, DEC);
     Serial.print("depth: ");
     Serial.println(depth);
     Serial.print("sample_counter: ");
@@ -384,8 +365,8 @@ void serial_metadata(){
     Serial.println(get_datetime());
 }
 
-void serial_header(){
-    /*It sends the header info of the datathrought the serial
+void print_serial_header(){
+    /*It sends the header info of the data through the serial
     communication*/
     Serial.println("DATA");
     Serial.println("DATE HOUR RED GREEN BLUE CLEAR");
@@ -395,89 +376,70 @@ void serial_header(){
 //////////////////// SD MANAGEMENT /////////////////////////
 ////////////////////////////////////////////////////////////
 
-void save_data(){
+File sd_open_file() {
     // open the file. note that only one file can be open at a time,
     // so you have to close this one before opening another.
     File data_file = SD.open(filename, FILE_WRITE);
-    if (! data_file) {
+
+    while (! data_file) {
         digitalWrite(REDLED, LOW);
         // Wait forever since we cant write data
-        while (1){
-            Serial.println("error opening " + filename);
-            delay(10000);
-        }
+        Serial.println("error opening " + filename);
+        delay(10000);
+        data_file = SD.open(filename, FILE_WRITE);
     }
+    digitalWrite(REDLED, HIGH);
+
+    return data_file;    
+}
+
+void sd_save_data(){
+    File data_file = sd_open_file();
     // Save data
-    data_file.print(" "); data_file.flush();
-    data_file.print(r, DEC); data_file.flush();
-    data_file.print(" "); data_file.flush();
-    data_file.print(g, DEC); data_file.flush();
-    data_file.print(" "); data_file.flush();
-    data_file.print(b, DEC); data_file.flush();
-    data_file.print(" "); data_file.flush();
-    data_file.print(c, DEC); data_file.flush();
+    data_file.print(" ");
+    data_file.print(r, DEC);
+    data_file.print(" ");
+    data_file.print(g, DEC);
+    data_file.print(" ");
+    data_file.print(b, DEC);
+    data_file.print(" ");
+    data_file.print(c, DEC); 
+    data_file.flush();
+    data_file.close();
+}
+
+void sd_save_date(){
+    File data_file = sd_open_file();
+ 
+    // Save data
+    data_file.print(get_datetime()); 
+    data_file.flush();
+
     // Close dataFile
     data_file.close();
 }
 
-void save_date(){
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
-    File data_file = SD.open(filename, FILE_WRITE);
-    if (! data_file) {
-        digitalWrite(REDLED, LOW);
-        // Wait forever since we cant write data
-        while (1){
-            Serial.println("error opening " + filename);
-            delay(10000);
-        }
-    }
-    // Save data
-    data_file.print(get_datetime()); data_file.flush();
-
-    // Close dataFile
-    data_file.close();
-}
-
-void save_new_line(){
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
-    File data_file = SD.open(filename, FILE_WRITE);
-    if (! data_file) {
-        digitalWrite(REDLED, LOW);
-        // Wait forever since we cant write data
-        while (1){
-            Serial.println("error opening " + filename);
-            delay(10000);
-        }
-    }
+void sd_save_new_line(){
+    File data_file = sd_open_file();
+ 
     // Save new line
-    data_file.println(""); data_file.flush();
-    // Close dataFile
+    data_file.println(""); 
+    data_file.flush();
     data_file.close();
 }
 
-void save_metadata(){
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
-    File data_file = SD.open(filename, FILE_WRITE);
-    if (! data_file) {
-        digitalWrite(REDLED, LOW);
-        // Wait forever since we cant write data
-        while (1){
-            Serial.println("error opening " + filename);
-            delay(10000);
-        }
-    }
+void sd_save_metadata(){
+    File data_file = sd_open_file();
+ 
     // Save metadata
     data_file.println(""); data_file.flush();
     data_file.println("METADATA"); data_file.flush();
-    data_file.print("initial_wait: "); data_file.flush();
-    data_file.println(initial_wait, DEC); data_file.flush();
+    data_file.print("initial_wait_s: "); data_file.flush();
+    data_file.println(initial_wait_s, DEC); data_file.flush();
     data_file.print("measures: "); data_file.flush();
     data_file.println(measures, DEC); data_file.flush();
-    data_file.print("period: "); data_file.flush();
-    data_file.println(period, DEC); data_file.flush();
+    data_file.print("period_ms: "); data_file.flush();
+    data_file.println(period_ms, DEC); data_file.flush();
     data_file.print("depth: "); data_file.flush();
     data_file.println(depth); data_file.flush();
     data_file.print("sample_counter: "); data_file.flush();
@@ -561,17 +523,8 @@ void save_metadata(){
 }
 
 void save_header(){
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
-    File data_file = SD.open(filename, FILE_WRITE);
-    if (! data_file) {
-        digitalWrite(REDLED, LOW);
-        // Wait forever since we cant write data
-        while (1){
-            Serial.println("error opening " + filename);
-            delay(10000);
-        }
-    }
+    File data_file = sd_open_file();
+ 
     // Save header
     data_file.println("DATA"); data_file.flush();
     data_file.println("TIME RED GREEN BLUE CLEAR");
@@ -585,164 +538,36 @@ void save_header(){
 ///////////// ACTIONS /////////////////////
 ///////////////////////////////////////////
 
-void actions() {
-    int inByte = 0; // incomming serial byte
-    if (Serial.available() > 0) {
-        // get incoming byte:
-        inByte = Serial.read();
-        if (inByte == UPDATE_RTC){
-            update_rtc();
-        }
-    }
+
+void get_rtc_serial(sCommand& sC, Stream& S) {
+    print_serial_date();
 }
 
-void interactive_update_rtc_serial(sCommand& sC, Stream& S) {
+void update_rtc_serial(sCommand& sC, Stream& S) {
 
     if ( sC.next() == NULL) {
-        S.println("Hello.");
+        S.println("Missing new RTC time value (YYYYMMDDHHMMSS)");
     } else {
-        S.printf("Hello %s, it is nice to meet you.\n",sC.current());
+        const char* dateTimeStr = sC.current();
+        S.printf("Received: %s\n", dateTimeStr);
+        int year, month, day, hour, minute, second;
 
-        char inByte = 0;
-        int year = 0;
-        int month = 0;
-        int day = 0;
-        int hour = 0;
-        int minute = 0;
-        int second = 0;
+        // Parse the date-time string
+        if (sscanf(dateTimeStr, "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &minute, &second) == 6) {
+            // Successfully parsed all components
+            S.printf("Parsed date-time: %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
 
-        for (int date_position = 0; date_position < 14; date_position++) {
-            // get incoming byte
-            inByte = sC.current()[date_position];
-            switch (date_position) {
-                case 0:
-                    year += (inByte - '0')*1000;
-                    break;
-                case 1:
-                    year += (inByte - '0')*100;
-                    break;
-                case 2:
-                    year += (inByte - '0')*10;
-                    break;
-                case 3:
-                    year += (inByte - '0');
-                    break;
-                case 4:
-                    month += (inByte - '0')*10;
-                    break;
-                case 5:
-                    month += (inByte - '0');
-                    break;
-                case 6:
-                    day += (inByte - '0')*10;
-                    break;
-                case 7:
-                    day += (inByte - '0');
-                    break;
-                case 8:
-                    hour += (inByte - '0')*10;
-                    break;
-                case 9:
-                    hour += (inByte - '0');
-                    break;
-                case 10:
-                    minute += (inByte - '0')*10;
-                    break;
-                case 11:
-                    minute += (inByte - '0');
-                    break;
-                case 12:
-                    second += (inByte - '0')*10;
-                    break;
-                case 13:
-                    second += (inByte - '0');
-                    break;
-            }
-        }
-        rtc.adjust(DateTime(year, month, day, hour, minute, second));
-        // Read time
-        Serial.println("Real Time Clock Updated");
-        serial_date();
-    }
+            // Now you can use the parsed values to update the RTC
+            // Example: rtc.adjust(DateTime(year, month, day, hour, minute, second));
 
-
-}
-
-void interactive_update_rtc() {
-    Serial.print("Write now the actual date and time (YYYYMMDDhhmmss)");
-    update_rtc();
-}
-
-void update_rtc() {
-    int watchdog_time = 100; // To do it not blocking
-    int inByte = 0;
-    
-    int year = 0;
-    int month = 0;
-    int day = 0;
-    int hour = 0;
-    int minute = 0;
-    int second = 0;
-
-    for (int i=0; i<watchdog_time; i++) {
-        if (Serial.available() > 13) { // YYYYMMDDhhmmss (14 bytes to receive)
-            for (int date_position = 0; date_position < 14; date_position++) {
-                // get incoming byte
-                inByte = Serial.read();
-                switch (date_position) {
-                    case 0:
-                        year += (inByte - '0')*1000;
-                        break;
-                    case 1:
-                        year += (inByte - '0')*100;
-                        break;
-                    case 2:
-                        year += (inByte - '0')*10;
-                        break;
-                    case 3:
-                        year += (inByte - '0');
-                        break;
-                    case 4:
-                        month += (inByte - '0')*10;
-                        break;
-                    case 5:
-                        month += (inByte - '0');
-                        break;
-                    case 6:
-                        day += (inByte - '0')*10;
-                        break;
-                    case 7:
-                        day += (inByte - '0');
-                        break;
-                    case 8:
-                        hour += (inByte - '0')*10;
-                        break;
-                    case 9:
-                        hour += (inByte - '0');
-                        break;
-                    case 10:
-                        minute += (inByte - '0')*10;
-                        break;
-                    case 11:
-                        minute += (inByte - '0');
-                        break;
-                    case 12:
-                        second += (inByte - '0')*10;
-                        break;
-                    case 13:
-                        second += (inByte - '0');
-                        break;
-                }
-            }
             rtc.adjust(DateTime(year, month, day, hour, minute, second));
             // Read time
             Serial.println("Real Time Clock Updated");
-            serial_date();
-            delay(3);
+            print_serial_date();
 
-            return;
+        } else {
+            S.println("Invalid date-time format. Expected YYYYMMDDHHMMSS.");
         }
-        else delay(real_time_clock_setup*10);
     }
 }
 
