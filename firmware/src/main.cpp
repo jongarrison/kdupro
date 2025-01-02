@@ -5,15 +5,15 @@
 #include "RTClib.h"
 #include "Adafruit_TCS34725.h"
 #include <ESP8266WiFi.h>
-#include "sCommand.h"
 #include <SimpleTimer.h>
 #include "actions.h"
 #include "globals.h"
+#include "data.h"
 
 void setup () {
     // CONFIGURATION
     delay(100);
-    
+
     //LEDs
     pinMode(REDLED, OUTPUT);
     pinMode(BLUELED, OUTPUT);
@@ -32,54 +32,22 @@ void setup () {
     delay(1000);
     Serial.begin(BAUDRATE);
 
-    // Setup Serial API
-    globals::sC.addCommand(globals::commands.LS_SD, actions::list_sd_files);
-    globals::sC.addCommand(globals::commands.CAT_SD, actions::list_sd_file_contents);
-    globals::sC.addCommand(globals::commands.SET_RTC, actions::update_rtc_serial);
-    globals::sC.addCommand(globals::commands.GET_RTC, actions::get_rtc_serial);
+    actions::registerSerialCommands();
+    data::system_data_setup();
 
-    // RTC
-    Serial.print("Initializing RTC.");
-    if (!globals::rtc.begin()) {
-        digitalWrite(REDLED, LED_ON);
-        Serial.println("Couldn't find RTC");
-        delay(INIT_FAILURE_DELAY);
-    }
-    digitalWrite(REDLED, LED_OFF);
-    Serial.println("RTC Init Done.");
-    
-    // SD
-    Serial.print("Initializing SD card.");
-    pinMode(SS, OUTPUT);
-    if (!SD.begin(globals::chipSelect_SD)) {
-        digitalWrite(REDLED, LED_ON);
-        Serial.println("Card failed, or not present");
-        delay(INIT_FAILURE_DELAY);
-    }
-    digitalWrite(REDLED, LED_OFF);
-    Serial.println("SD Init Done.");
-    
-    // TCS34725
-    Serial.print("Initializing TCS34725.");
-    while (!globals::tcs.begin()) {
-        digitalWrite(REDLED, LED_ON);
-        Serial.println("No TCS34725 found");
-        delay(INIT_FAILURE_DELAY);
-    }
-    digitalWrite(REDLED, LED_OFF);
-    globals::tcs.clearInterrupt();
-    Serial.println("TCS34725 Init Done.");
-    
+    actions::init_rtc();
+    actions::init_sd();
+    actions::init_tcs();
+    data::system_data_setup();
+
     // Initial wait
     Serial.print("Waiting ");
     Serial.print(globals::initial_wait_s);
-    Serial.println(" seconds");
+    Serial.println("s to start data collection");
 
     globals::timer.setTimeout(globals::initial_wait_s * 1000, [](){
         digitalWrite(BLUELED, LED_OFF);
 
-        actions::generate_metadata_id();
-        actions::generate_filename();
         // Write metadata and header into file.txt
         actions::sd_save_metadata();
         actions::save_header();

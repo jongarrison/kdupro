@@ -1,0 +1,39 @@
+SET initial_wait_s 60
+SET measures 60
+SET period_ms 60000
+META depth 0.5
+META name Kdupro01
+META buoy 1
+META country Colombia
+META place Akuara
+META maker UDEA
+META curator ICM-CSIC
+META email rodero@icm.csic.es
+META sensors TCS34725
+META description calibration
+META units counts, counts, counts, counts
+META latitude 41.383189
+META longitude 2.197949
+META altitude 0
+META ref_coord_system WGS84
+META location_source GNSS
+META time_source internet time pool
+META processing_level 0
+META processing_procedure https://git.csic.es/kduino/kdupro
+META processing_version build
+META processing_revision 0
+META calibration_procedure https://git.csic.es/kduino/kdupro
+META calibration_reference 0
+META calibration_time 0
+META calibration_version 0
+META sensor_id 
+META platform_id 
+META deployment_id 
+META sample_id 
+META observer_id 
+META owner_contact jpiera@icm.csic.es
+META operator_contact rodero@icm.csic.es
+META license MIT License
+META license_reference https://opensource.org/licenses/MIT
+META embargo_date 
+META datetime YYYY-MM-DDThh:mm:ssZ

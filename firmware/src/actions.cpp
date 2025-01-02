@@ -2,69 +2,15 @@
 
 namespace actions {
 
-    // Metadata
-    String name = "Kdupro01";                   // Name of the module
-    String buoy = "1";                          // Name of the buoy
-    String country = "Colombia";                // Name of the country
-    String place = "Akuara";                    // Text with place of deployment
-    String maker = "UDEA";                      // Maker name
-    String curator = "ICM-CSIC";                // Curator name
-    String email = "rodero@icm.csic.es";        // Email of the curator
-    String sensors = "TCS34725";                // List with name of used sensors "Sensor 1, ..., Sensor n"
-    String description = "calibration";                    // Description (optional)
-    String units = "counts, counts, counts, counts";    // Units of the measurements "Unit 1, ..., Unit n"
+    Commands commands;
 
-    // MONOCLE Metadata
-    String latitude = "41.383189";              // Latitude
-    String longitude = "2.197949";              // Longitude
-    String altitude = "0";                      // Altitude  
-    String ref_coord_system = "WGS84";          // Reference Coordinate System
-    String location_source = "GNSS";            // Source of the Geodesic information
-    String time_source = "internet time pool";  // Source of the Time information
-    String processing_level = "0";              // Defined by manufacturer and described in the reference documentation.
-    String processing_procedure = "https://git.csic.es/kduino/kdupro";           // Reference to protocols and algorithms describing the steps involved in data processing
-    String processing_version = "build";        // Version of the data processing software
-    String processing_revision = "0";           // Incremental version of the processed data
-    String calibration_procedure = "https://git.csic.es/kduino/kdupro";          // For calibrated data: documentation describing the calibration procedure. Can be the same as Processing procedure reference
-    String calibration_reference = "0";         // Identifier of calibration information
-    String calibration_time = "0";              // Date/time stamp of applicable (uncalibrated data, if available) or applied (calibrated data) sensor calibration.
-    String calibration_version = "0";           // Version of the calibration processing software
-    // sensor_id, platform_id, deployment_id, sample_id generated in method "generate_metadata_id"
-    String sensor_id = "";              // Unique identifiers used to prevent data duplication with data consumers
-    String platform_id = "";            // Platform serial number or randomly assigned identifier (UUID) used with all connected sensors. May be left empty if not applicable.
-    String deployment_id = "";          // Randomly assigned identifier (UUID) specific to deployment sequence (e.g. cruise, campaign, vertical profile) of a specific sensor. Not shared with other sensors.
-    String sample_id = "";              // Randomly assigned identifier (UUID) generated with each distinct data record from any set of sensors belonging to a single observation.
-    String observer_id = "";            // Randomly assigned identifier (UUID) repeated with each data record from this and/or other sensors when operated by a specific observer.
-    String owner_contact = "jpiera@icm.csic.es";         // An email address where the owner of the data can be contacted now and in future
-    String operator_contact = "rodero@icm.csic.es";      // An email address where the current operator can be contacted
-    String license = "MIT License";                      // A licence string or coding that is either self-explanatory or detailed in the License_reference field.
-    String license_reference = "https://opensource.org/licenses/MIT";           // A reference describing the data license in detail.
-    String embargo_date = "";                   // A date following which the data may be used according to the specified license. Used, for example, to hide the data record in NRT visualization until quality control is completed.
-    // Time set up in the serial monitor. Format YYYY-MM-DDThh:mm:ssZ  // Character string formatted according to ISO8601
-    String datetime = "YYYY-MM-DDThh:mm:ssZ";
-    ////////////////////////////////////////////////////////////
-    ////// GENERATE METADATA ID AND FILE NAME //////////////////
-    ////////////////////////////////////////////////////////////
 
-    void generate_metadata_id(){
-        /* update the ids from metadata */
-
-        String date = get_datetime().substring(0, 10);
-        String time_sample = get_datetime().substring(11, 16);
-        String rnd_number = String(random(0xffff), HEX);
-
-        sensor_id = WiFi.macAddress();
-        sensor_id.replace(":", "");
-        platform_id = buoy + "_" + country + "_" + place;
-        deployment_id = sensor_id + "_" + name + "_" + globals::depth + "_" + rnd_number;
-        sample_id = platform_id + "_" + time_sample;
-        observer_id = operator_contact + "_" + date + "_" + time_sample;
-    }
-
-    void generate_filename(){
-        /* generate name of the file */
-        String date = get_datetime().substring(0, 10);
-        globals::filename = date + "_" + "buoy" +  platform_id + "_" + globals::depth + ".txt";
+    void registerSerialCommands() {
+        globals::sC.addCommand(commands.LS_SD, list_sd_files);
+        globals::sC.addCommand(commands.CAT_SD, list_sd_file_contents);
+        globals::sC.addCommand(commands.SET_RTC, update_rtc_serial);
+        globals::sC.addCommand(commands.GET_RTC, get_rtc_serial);
+     
     }
 
     ////////////////////////////////////////////////////////////
@@ -119,80 +65,14 @@ namespace actions {
         S.println(globals::measures, DEC);
         S.print("period_ms: ");
         S.println(globals::period_ms, DEC);
-        S.print("depth: ");
-        S.println(globals::depth);
-        S.print("sample_counter: ");
-        S.println(globals::sample_counter);
         
-        S.print("name: ");
-        S.println(name);
-        S.print("buoy: ");
-        S.println(buoy);
-        S.print("place: ");
-        S.println(place);
-        S.print("country: ");
-        S.println(country);
-        S.print("maker: ");
-        S.println(maker);
-        S.print("curator: ");
-        S.println(curator);
-        S.print("email: ");
-        S.println(email);
-        S.print("sensors: ");
-        S.println(sensors);
-        S.print("description: ");
-        S.println(description);
-        S.print("units: ");
-        S.println(units);
-
-        S.print("latitude: ");
-        S.println(latitude);
-        S.print("longitude: ");
-        S.println(longitude);
-        S.print("altitude: ");
-        S.println(altitude);
-        S.print("ref_coord_system: ");
-        S.println(ref_coord_system);
-        S.print("location_source: ");
-        S.println(location_source);
-        S.print("time_source: ");
-        S.println(time_source);
-        S.print("processing_level: ");
-        S.println(processing_level);
-        S.print("processing_procedure: ");
-        S.println(processing_procedure);
-        S.print("processing_version: ");
-        S.println(processing_version);
-        S.print("processing_revision: ");
-        S.println(processing_revision);
-        S.print("calibration_procedure: ");
-        S.println(calibration_procedure);
-        S.print("calibration_reference: ");
-        S.println(calibration_reference);
-        S.print("calibration_time: ");
-        S.println(calibration_time);
-        S.print("calibration_version: ");
-        S.println(calibration_version);
-        S.print("sensor_id: ");
-        S.println(sensor_id);
-        S.print("platform_id: ");
-        S.println(platform_id);
-        S.print("deployment_id: ");
-        S.println(deployment_id);
-        S.print("sample_id: ");
-        S.println(sample_id);
-        S.print("observer_id: ");
-        S.println(observer_id);
-        S.print("owner_contact: ");
-        S.println(owner_contact);
-        S.print("operator_contact: ");
-        S.println(operator_contact);
-        S.print("license: ");
-        S.println(license);
-        S.print("license_reference: ");
-        S.println(license_reference);
-        S.print("embargo_date: ");
-        S.println(embargo_date);
+        //Iterate over metadata keys
+        int metadataSize = globals::metadata.size();
+        for (int i = 0; i < metadataSize; i++) {
+            S.print(String(globals::metadata.getKey(i)));
+            S.print(": ");
+            S.println(String(globals::metadata.getValue(i)));
+        }
 
         S.print("time: ");
         S.println(get_datetime());
@@ -264,7 +144,7 @@ namespace actions {
 
     void sd_save_metadata(){
         File data_file = sd_open_file();
-        print_metadata_to_stream(data_file);
+        actions::print_metadata_to_stream(data_file);
         data_file.close();
     }
 
@@ -309,6 +189,106 @@ namespace actions {
         }
     }
 
+    void list_sd_file_size(sCommand& sC, Stream& S){
+        if ( sC.next() == NULL) {
+            S.println("Missing file name");
+        } else {
+            const char* filename = sC.current();
+            File data_file = SD.open(filename);
+            if (data_file) {
+                S.println(data_file.size());
+                data_file.close();
+            } else {
+                S.println("Error opening file");
+            }
+        }
+    }
+
+    void rm_sd_file(sCommand& sC, Stream& S){
+        if ( sC.next() == NULL) {
+            S.println("Missing file name");
+        } else {
+            const char* filename = sC.current();
+            if (SD.remove(filename)) {
+                S.println("File removed");
+            } else {
+                S.println("Error removing file");
+            }
+        }
+    }
+
+    void set_variable(sCommand& sC, Stream& S){
+        if ( sC.next() == NULL) {
+            S.println("Missing variable name");
+        } else {
+            const char* variable = sC.current();
+            if ( sC.next() == NULL) {
+                S.println("Missing variable value");
+            } else {
+                const char* value = sC.current();
+                globals::metadata[variable] = value;
+                S.println("Variable set");
+            }
+        }
+    }
+
+    void set_metadata(sCommand& sC, Stream& S){
+        if ( sC.next() == NULL) {
+            S.println("Missing metadata name");
+        } else {
+            const char* variableName = sC.current();
+            if ( sC.next() == NULL) {
+                S.println("Missing variable value");
+            } else {
+                strcpy(globals::metadata[variableName], sC.current());
+                S.println("Variable set");
+            }
+        }
+    }
+
+    void init_sd() {
+        Serial.print("Initializing SD card.");
+        pinMode(SS, OUTPUT);
+        if (!SD.begin(globals::chipSelect_SD)) {
+            digitalWrite(REDLED, LED_ON);
+            Serial.println("Card failed, or not present");
+            delay(INIT_FAILURE_DELAY);
+        }
+        digitalWrite(REDLED, LED_OFF);
+        Serial.println("SD Init Done.");
+    }
+
+    void init_tcs() {
+        // TCS34725
+        Serial.print("Initializing TCS34725.");
+        while (!globals::tcs.begin()) {
+            digitalWrite(REDLED, LED_ON);
+            Serial.println("No TCS34725 found");
+            delay(INIT_FAILURE_DELAY);
+        }
+        digitalWrite(REDLED, LED_OFF);
+        globals::tcs.clearInterrupt();
+        Serial.println("TCS34725 Init Done.");
+
+    }
+
+    ////////////////////////////////////////////////////////////
+    //////////////////// RTC FUNCTIONS ////////////////////
+    ////////////////////////////////////////////////////////////
+
+    void init_rtc() {
+        // RTC
+        Serial.print("Initializing RTC.");
+        if (!globals::rtc.begin()) {
+            digitalWrite(REDLED, LED_ON);
+            Serial.println("Couldn't find RTC");
+            delay(INIT_FAILURE_DELAY);
+        }
+        globals::rtcMillis.begin(globals::rtc.now());
+        digitalWrite(REDLED, LED_OFF);
+        Serial.println("RTC Init Done.");
+    }
+
     void get_rtc_serial(sCommand& sC, Stream& S) {
         print_serial_date();
     }
@@ -326,11 +306,13 @@ namespace actions {
             if (sscanf(dateTimeStr, "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &minute, &second) == 6) {
                 // Successfully parsed all components
                 S.printf("Parsed date-time: %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
-
+            
                 // Now you can use the parsed values to update the RTC
                 // Example: rtc.adjust(DateTime(year, month, day, hour, minute, second));
 
                 globals::rtc.adjust(DateTime(year, month, day, hour, minute, second));
+                globals::rtcMillis.adjust(globals::rtc.now());
+
                 // Read time
                 Serial.println("Real Time Clock Updated");
                 print_serial_date();
@@ -342,14 +324,22 @@ namespace actions {
     }
 
     String get_datetime() {
-        /* Updates datetime string with correct format */
+        //See RTC_millis synching here: https://forums.adafruit.com/viewtopic.php?p=154467#p154467
 
-        globals::now = globals::rtc.now();
-        char buffer [31] = "";
-        sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d:%03dZ", globals::now.year(), globals::now.month(), globals::now.day(), globals::now.hour(), globals::now.minute(), globals::now.second(), millis() % 1000);
-        datetime = String(buffer);
-
-        return datetime;
-    }
-
+        static DateTime now = globals::rtcMillis.now();
+        static long nowMillis = millis();
+        static char buffer [31] = "";
+        sprintf(
+                buffer, 
+                "%04d-%02d-%02dT%02d:%02d:%02d:%03dZ", 
+                now.year(), 
+                now.month(), 
+                now.day(), 
+                now.hour(), 
+                now.minute(), 
+                now.second(), 
+                (nowMillis - globals::rtcMillisOffset) % 1000
+            );
+        return String(buffer);
+    }        
 }
