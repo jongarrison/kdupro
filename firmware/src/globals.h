@@ -9,6 +9,7 @@
 #include <SimpleTimer.h>
 #include "Adafruit_TCS34725.h"
 #include "SimpleDictionary.h"
+#include <array>
 
 #define SERIALCOMMAND_DEBUG
 
@@ -26,30 +27,35 @@ namespace globals {
     extern const String sd_settings_file;
 
     // Settings 
-    extern int initial_wait_s;     // Time to wait before start the loop (in seconds)
-    extern int measures;           // Number of measurements to do[1, 59]
-    extern int period_ms;          // Sampling period (ms)
-    extern int sample_counter;     // Counter of measurements
+    extern int initial_wait_s;      // Time to wait before start the loop (in seconds)
+    extern int measures;            // Number of measurements to do[1, 59]
+    extern int period_ms;           // Sampling period (ms)
+    extern int sample_counter;      // Counter of measurements
 
     // Derived Metadata
-    extern String depth;           // Absolute depth of the device [0.1, 30] (in meters)
-    extern String sensor_id;       // Unique identifiers used to prevent data duplication with data consumers
-    extern String platform_id;     // Platform serial number or randomly assigned identifier (UUID) used with all connected sensors. May be left empty if not applicable.
-    extern String deployment_id;   // Randomly assigned identifier (UUID) specific to deployment sequence (e.g. cruise, campaign, vertical profile) of a specific sensor. Not shared with other sensors.
-    extern String sample_id;       // Randomly assigned identifier (UUID) generated with each distinct data record from any set of sensors belonging to a single observation.
-    extern String observer_id;     // Randomly assigned identifier (UUID) repeated with each data record from this and/or other sensors when operated by a specific observer.
+    extern String depth;            // Absolute depth of the device [0.1, 30] (in meters)
+    extern String sensor_id;        // Unique identifiers used to prevent data duplication with data consumers
+    extern String platform_id;      // Platform serial number or randomly assigned identifier (UUID) used with all connected sensors. May be left empty if not applicable.
+    extern String deployment_id;    // Randomly assigned identifier (UUID) specific to deployment sequence (e.g. cruise, campaign, vertical profile) of a specific sensor. Not shared with other sensors.
+    extern String sample_id;        // Randomly assigned identifier (UUID) generated with each distinct data record from any set of sensors belonging to a single observation.
+    extern String observer_id;      // Randomly assigned identifier (UUID) repeated with each data record from this and/or other sensors when operated by a specific observer.
 
     extern sCommand sC;
     extern const int chipSelect_SD;
-    extern Adafruit_TCS34725 tcs; //Color sensor
+    extern Adafruit_TCS34725 tcs;   //Color sensor
     extern uint16_t r, g, b, c; 
     extern String filename;
-    extern SimpleTimer timer; //Providing the Serial object is only necessary to see debug output
-    extern SimpleDictionary<char*, 40, 40> metadata;
+    extern SimpleTimer timer;       //Providing the Serial object is only necessary to see debug output
+
+    struct metaDataDictConfig {
+        static const unsigned int keySize = 40;
+        static const unsigned int valueSize = 40;
+        static const unsigned int elementCount = 40;
+    };
+
+    extern SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;
 
     extern RTC_PCF8523 rtc;
-    extern RTC_Millis rtcMillis;
-    extern long rtcMillisOffset;
     
 
 }

@@ -10,7 +10,11 @@ namespace actions {
         globals::sC.addCommand(commands.CAT_SD, list_sd_file_contents);
         globals::sC.addCommand(commands.SET_RTC, update_rtc_serial);
         globals::sC.addCommand(commands.GET_RTC, get_rtc_serial);
-     
+        globals::sC.addCommand(commands.SIZE_SD, list_sd_file_size);
+        globals::sC.addCommand(commands.RM_SD, rm_sd_file);
+        globals::sC.addCommand(commands.SET, set_variable);
+        globals::sC.addCommand(commands.META, set_metadata);
+        Serial.println("Serial commands registered");
     }
 
     ////////////////////////////////////////////////////////////
@@ -34,10 +38,6 @@ namespace actions {
     //////////////////// SERIAL COMMUNICATION //////////////////
     ////////////////////////////////////////////////////////////
 
-    void print_serial_date(){
-        /*It sends the data throught the serial  communication*/
-        Serial.println(get_datetime());
-    }
 
     void print_serial_rgb_data(){
         /*It sends the data throught the serial  communication*/
@@ -71,7 +71,7 @@ namespace actions {
         for (int i = 0; i < metadataSize; i++) {
             S.print(String(globals::metadata.getKey(i)));
             S.print(": ");
-            S.println(String(globals::metadata.getValue(i)));
+            S.println(String(globals::metadata.getValue(i).data()));
         }
 
         S.print("time: ");
@@ -219,30 +219,52 @@ namespace actions {
 
     void set_variable(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
-            S.println("Missing variable name");
+            Serial.println("Missing variable name");
         } else {
-            const char* variable = sC.current();
+            const char* variableName = sC.current();
             if ( sC.next() == NULL) {
-                S.println("Missing variable value");
+                Serial.println("Missing variable value");
             } else {
+                // SET initial_wait_s 60
+                // SET measures 60
+                // SET period_ms 60000                
                 const char* value = sC.current();
-                globals::metadata[variable] = value;
-                S.println("Variable set");
+                Serial.print("SET ");
+                Serial.print(variableName);
+                Serial.print(":");
+
+                if (strcmp(variableName, "initial_wait_s") == 0) {
+                    globals::initial_wait_s = atoi(value);
+                    Serial.println(globals::initial_wait_s);
+                } else if (strcmp(variableName, "measures") == 0) {
+                    globals::measures = atoi(value);
+                    Serial.println(globals::measures);
+                } else if (strcmp(variableName, "period_ms") == 0) {
+                    globals::period_ms = atoi(value);  
+                    Serial.println(globals::period_ms);                  
+                } else {
+                    Serial.print("Unknown variable name received:");
+                    Serial.println(variableName);
+                }
             }
         }
     }
 
     void set_metadata(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
-            S.println("Missing metadata name");
+            Serial.println("Missing metadata name");
         } else {
             const char* variableName = sC.current();
+            Serial.print("META ");
+            Serial.print(variableName);
+            Serial.print(":");
+
             if ( sC.next() == NULL) {
-                S.println("Missing variable value");
+                strcpy(globals::metadata[variableName].data(), "");
             } else {
-                strcpy(globals::metadata[variableName], sC.current());
-                S.println("Variable set");
+                strcpy(globals::metadata[variableName].data(), sC.current());
             }
+            Serial.println(globals::metadata[variableName].data());
         }
     }
 
@@ -284,7 +306,6 @@ namespace actions {
             Serial.println("Couldn't find RTC");
             delay(INIT_FAILURE_DELAY);
         }
-        globals::rtcMillis.begin(globals::rtc.now());
         digitalWrite(REDLED, LED_OFF);
         Serial.println("RTC Init Done.");
     }
@@ -311,7 +332,6 @@ namespace actions {
                 // Example: rtc.adjust(DateTime(year, month, day, hour, minute, second));
 
                 globals::rtc.adjust(DateTime(year, month, day, hour, minute, second));
-                globals::rtcMillis.adjust(globals::rtc.now());
 
                 // Read time
                 Serial.println("Real Time Clock Updated");
@@ -326,7 +346,7 @@ namespace actions {
     String get_datetime() {
         //See RTC_millis synching here: https://forums.adafruit.com/viewtopic.php?p=154467#p154467
 
-        static DateTime now = globals::rtcMillis.now();
+        static DateTime now = globals::rtc.now();
         static long nowMillis = millis();
         static char buffer [31] = "";
         sprintf(
@@ -338,8 +358,13 @@ namespace actions {
                 now.hour(), 
                 now.minute(), 
                 now.second(), 
-                (nowMillis - globals::rtcMillisOffset) % 1000
+                nowMillis % 1000
             );
         return String(buffer);
-    }        
+    }    
+
+    void print_serial_date(){
+        /*It sends the data throught the serial  communication*/
+        Serial.println(get_datetime());
+    }    
 }

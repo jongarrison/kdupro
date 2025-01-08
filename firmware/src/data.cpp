@@ -56,35 +56,41 @@ META datetime YYYY-MM-DDThh:mm:ssZ
         /* Load settings from SD card */
         File settings_file = SD.open(globals::sd_settings_file);
         if (settings_file) {
+            Serial.println("Reading in settings file");
             globals::sC.readSerial(settings_file);
             settings_file.close();
         } else if (isInitAllowed == true) {
+            Serial.println("No settings file found, creating default settings");
             settings_file = SD.open(globals::sd_settings_file, FILE_WRITE);
             settings_file.print(settings_default);
             settings_file.close();
             delay(100);
             load_settings(false);
-
+        } else if (isInitAllowed == false) {
             Serial.println("Error opening settings file");
         }
     }
 
     void save_settings(){
-        /* Save settings into SD card */
+        /* 
+        Save settings into SD card 
+        1. Delete the existing file
+        2. Create a new file
+        3. Write the settings into the file
+        */
         File settings_file = SD.open(globals::sd_settings_file, FILE_WRITE);
         if (settings_file) {
-            settings_file.print("initial_wait_s:");
-            settings_file.println(globals::initial_wait_s);
-            settings_file.print("measures:");
-            settings_file.println(globals::measures);
-            settings_file.print("period_ms:");
-            settings_file.println(globals::period_ms);
-            settings_file.close();
+            // settings_file.print("initial_wait_s:");
+            // settings_file.println(globals::initial_wait_s);
+            // settings_file.print("measures:");
+            // settings_file.println(globals::measures);
+            // settings_file.print("period_ms:");
+            // settings_file.println(globals::period_ms);
+            // settings_file.close();
         } else {
             Serial.println("Error opening settings file");
         }
     }
-
 
     ////////////////////////////////////////////////////////////
     ////// GENERATE METADATA ID AND FILE NAME //////////////////
@@ -99,16 +105,19 @@ META datetime YYYY-MM-DDThh:mm:ssZ
 
         globals::sensor_id = WiFi.macAddress();
         globals::sensor_id.replace(":", "");
-        globals::platform_id = *globals::metadata["buoy"] + String("_") + *globals::metadata["country"] + String("_") + *globals::metadata["place"];
-        globals::deployment_id = globals::sensor_id + String("_") + globals::metadata["name"] + String("_") + globals::metadata["depth"] + String("_") + rnd_number;
+        globals::platform_id = *globals::metadata["buoy"].data() + String("_") + *globals::metadata["country"].data() + String("_") + *globals::metadata["place"].data();
+        globals::deployment_id = globals::sensor_id + String("_") + globals::metadata["name"].data() + String("_") + globals::metadata["depth"].data() + String("_") + rnd_number;
         globals::sample_id = globals::platform_id + String("_") + time_sample;
-        globals::observer_id = globals::metadata["operator_contact"] + String("_") + date + String("_") + time_sample;
+        globals::observer_id = globals::metadata["operator_contact"].data() + String("_") + date + String("_") + time_sample;
+        Serial.println("Metadata IDs updated");
     }
 
     void generate_filename(){
         /* generate name of the file */
         String date = actions::get_datetime().substring(0, 10);
-        globals::filename = date + String("_buoy") + globals::platform_id + String("_") + globals::metadata["depth"] + String(".txt");
+        globals::filename = date + String("_buoy") + globals::platform_id + String("_") + globals::metadata["depth"].data() + String(".txt");
+        Serial.print("Filename updated: ");
+        Serial.println(globals::filename);
     }
 
 }

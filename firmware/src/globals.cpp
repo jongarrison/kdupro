@@ -20,7 +20,6 @@ namespace globals {
 
     // Vars
     RTC_PCF8523 rtc;
-    RTC_Millis rtcMillis;
 
     const int chipSelect_SD = 15;
     Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
@@ -28,5 +27,5 @@ namespace globals {
     String filename;
     SimpleTimer timer(Serial); //Providing the Serial object is only necessary to see debug output
 
-    SimpleDictionary<char*, 40, 40> metadata;
+    SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;    
 }
