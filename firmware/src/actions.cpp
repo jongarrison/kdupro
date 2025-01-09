@@ -20,6 +20,10 @@ namespace actions {
         Serial.println("Serial commands registered");
     }
 
+    void sendCmdResponseFinish(Stream& S) {
+        S.println("EOF");
+    }
+
     ////////////////////////////////////////////////////////////
     //////////////////// MEASUREMENTS //////////////////////////
     ////////////////////////////////////////////////////////////
@@ -164,9 +168,10 @@ namespace actions {
                 // no more files
                 break;
             }
-            Serial.println(entry.name());
+            S.println(entry.name());
             entry.close();
         }
+        sendCmdResponseFinish(S);
     }
 
     void cmd_list_sd_file_contents(sCommand& sC, Stream& S){
@@ -179,7 +184,7 @@ namespace actions {
                 while (data_file.available()) {
                     S.write(data_file.read());
                 }
-                S.println("EOF");
+                sendCmdResponseFinish(S);
                 data_file.close();
             } else {
                 Serial.println("Error opening file");
@@ -194,12 +199,13 @@ namespace actions {
             const char* filename = sC.current();
             File data_file = SD.open(filename);
             if (data_file) {
-                Serial.println(data_file.size());
+                S.println(data_file.size());
                 data_file.close();
             } else {
                 Serial.println("Error opening file");
             }
         }
+        sendCmdResponseFinish(S);
     }
 
     void cmd_rm_sd_file(sCommand& sC, Stream& S){
@@ -309,6 +315,7 @@ namespace actions {
 
     void cmd_get_rtc_serial(sCommand& sC, Stream& S) {
         print_serial_date();
+        sendCmdResponseFinish(S);
     }
 
     void cmd_update_rtc_serial(sCommand& sC, Stream& S) {
@@ -392,7 +399,7 @@ namespace actions {
 
     void start_data_recording_process() {
         if (globals::isDataCollectionPaused) {
-            Serial.println("Data collection is paused. Please resume before starting.");
+            //Serial.println("Data collection is paused. Please resume before starting.");
             return;
         }
 
@@ -420,6 +427,7 @@ namespace actions {
     void cmd_pause_data(sCommand& sC, Stream& S) {
         globals::isDataCollectionPaused = true;
         S.println("PAUSED");
+        sendCmdResponseFinish(S);
     }
 
     void cmd_resume_data(sCommand& sC, Stream& S) {
@@ -428,12 +436,14 @@ namespace actions {
             cmd_start_data(sC, S);
         } else {
             S.println("RESUMED");
+            sendCmdResponseFinish(S);
         }
     }
 
     void cmd_start_data(sCommand& sC, Stream& S) {
         start_data_recording_process();
         S.println("STARTED");
+        sendCmdResponseFinish(S);
     }
 
 
