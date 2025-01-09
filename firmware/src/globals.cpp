@@ -3,6 +3,9 @@
 namespace globals {
     sCommand sC;
     int mainTimerId = 0; // Timer ID for the main loop
+    SimpleTimer timer(Serial); //Providing the Serial object is only necessary to see debug output
+    bool isDataCollectionPaused = false;
+
     const String sd_settings_file = "settings.txt";
 
     // Settings 
@@ -25,7 +28,6 @@ namespace globals {
     Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
     uint16_t r, g, b, c; 
     String filename;
-    SimpleTimer timer(Serial); //Providing the Serial object is only necessary to see debug output
-
+ 
     SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;    
 }

@@ -12,6 +12,8 @@ namespace data {
 
     void generate_metadata_id();
     void generate_filename();
+
+    File sd_open_file_by_name(String filename);
 }
 
 #endif /* DATA_H_ */

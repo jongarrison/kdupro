@@ -48,8 +48,6 @@ META datetime YYYY-MM-DDThh:mm:ssZ
     void system_data_setup(){
         /* Load metadata and settings */
         load_settings();
-        generate_metadata_id();
-        generate_filename();
     }
 
     void load_settings(bool isInitAllowed){
@@ -72,24 +70,29 @@ META datetime YYYY-MM-DDThh:mm:ssZ
     }
 
     void save_settings(){
-        /* 
-        Save settings into SD card 
-        1. Delete the existing file
-        2. Create a new file
-        3. Write the settings into the file
-        */
-        File settings_file = SD.open(globals::sd_settings_file, FILE_WRITE);
-        if (settings_file) {
-            // settings_file.print("initial_wait_s:");
-            // settings_file.println(globals::initial_wait_s);
-            // settings_file.print("measures:");
-            // settings_file.println(globals::measures);
-            // settings_file.print("period_ms:");
-            // settings_file.println(globals::period_ms);
-            // settings_file.close();
-        } else {
-            Serial.println("Error opening settings file");
+        if (SD.exists(globals::sd_settings_file)) {
+            SD.remove(globals::sd_settings_file);
         }
+                
+        File sfile = sd_open_file_by_name(globals::sd_settings_file);
+
+        sfile.print("SET initial_wait_s ");
+        sfile.println(globals::initial_wait_s, DEC);
+        sfile.print("SET measures ");
+        sfile.println(globals::measures, DEC);
+        sfile.print("SET period_ms ");
+        sfile.println(globals::period_ms, DEC);
+        
+        //Iterate over metadata keys
+        int metadataSize = globals::metadata.size();
+        for (int i = 0; i < metadataSize; i++) {
+            sfile.print("META ");
+            sfile.print(String(globals::metadata.getKey(i)));
+            sfile.print(" ");
+            sfile.println(String(globals::metadata.getValue(i).data()));
+        }
+
+        sfile.close();
     }
 
     ////////////////////////////////////////////////////////////
@@ -118,6 +121,23 @@ META datetime YYYY-MM-DDThh:mm:ssZ
         globals::filename = date + String("_buoy") + globals::platform_id + String("_") + globals::metadata["depth"].data() + String(".txt");
         Serial.print("Filename updated: ");
         Serial.println(globals::filename);
+    }
+
+    File sd_open_file_by_name(String filename) {
+        // open the file. note that only one file can be open at a time,
+        // so you have to close this one before opening another.
+        File data_file = SD.open(filename, FILE_WRITE);
+
+        while (! data_file) {
+            digitalWrite(REDLED, LED_ON);
+            // Wait forever since we cant write data
+            Serial.println("error opening " + filename);
+            delay(10000);
+            data_file = SD.open(filename, FILE_WRITE);
+        }
+        digitalWrite(REDLED, LED_OFF);   
+
+        return data_file;    
     }
 
 }

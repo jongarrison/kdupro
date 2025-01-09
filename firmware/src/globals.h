@@ -24,6 +24,8 @@
 
 namespace globals {
     extern int mainTimerId; // Timer ID for the main loop
+    extern SimpleTimer timer;       
+    extern bool isDataCollectionPaused;
     extern const String sd_settings_file;
 
     // Settings 
@@ -45,7 +47,6 @@ namespace globals {
     extern Adafruit_TCS34725 tcs;   //Color sensor
     extern uint16_t r, g, b, c; 
     extern String filename;
-    extern SimpleTimer timer;       //Providing the Serial object is only necessary to see debug output
 
     struct metaDataDictConfig {
         static const unsigned int keySize = 40;

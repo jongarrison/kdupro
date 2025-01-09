@@ -4,16 +4,19 @@ namespace actions {
 
     Commands commands;
 
-
     void registerSerialCommands() {
-        globals::sC.addCommand(commands.LS_SD, list_sd_files);
-        globals::sC.addCommand(commands.CAT_SD, list_sd_file_contents);
-        globals::sC.addCommand(commands.SET_RTC, update_rtc_serial);
-        globals::sC.addCommand(commands.GET_RTC, get_rtc_serial);
-        globals::sC.addCommand(commands.SIZE_SD, list_sd_file_size);
-        globals::sC.addCommand(commands.RM_SD, rm_sd_file);
-        globals::sC.addCommand(commands.SET, set_variable);
-        globals::sC.addCommand(commands.META, set_metadata);
+        globals::sC.addCommand(commands.LS_SD, cmd_list_sd_files);
+        globals::sC.addCommand(commands.CAT_SD, cmd_list_sd_file_contents);
+        globals::sC.addCommand(commands.SET_RTC, cmd_update_rtc_serial);
+        globals::sC.addCommand(commands.GET_RTC, cmd_get_rtc_serial);
+        globals::sC.addCommand(commands.SIZE_SD, cmd_list_sd_file_size);
+        globals::sC.addCommand(commands.RM_SD, cmd_rm_sd_file);
+        globals::sC.addCommand(commands.SET, cmd_set_variable);
+        globals::sC.addCommand(commands.META, cmd_set_metadata);
+        globals::sC.addCommand(commands.SAVE, cmd_sd_save_config_to_file);
+        globals::sC.addCommand(commands.PAUSE, cmd_pause_data);
+        globals::sC.addCommand(commands.RESUME, cmd_resume_data);
+        globals::sC.addCommand(commands.START, cmd_start_data);
         Serial.println("Serial commands registered");
     }
 
@@ -79,6 +82,11 @@ namespace actions {
         S.flush();
     }
 
+    void cmd_sd_save_config_to_file(sCommand& sC, Stream& S){
+        data::save_settings();
+        S.println("SAVED");
+    }
+
     void print_serial_header(){
         /*It sends the header info of the data through the serial
         communication*/
@@ -90,21 +98,10 @@ namespace actions {
     //////////////////// SD MANAGEMENT /////////////////////////
     ////////////////////////////////////////////////////////////
 
+
+
     File sd_open_file() {
-        // open the file. note that only one file can be open at a time,
-        // so you have to close this one before opening another.
-        File data_file = SD.open(globals::filename, FILE_WRITE);
-
-        while (! data_file) {
-            digitalWrite(REDLED, LOW);
-            // Wait forever since we cant write data
-            Serial.println("error opening " + globals::filename);
-            delay(10000);
-            data_file = SD.open(globals::filename, FILE_WRITE);
-        }
-        digitalWrite(REDLED, HIGH);
-
-        return data_file;    
+        return data::sd_open_file_by_name(globals::filename);
     }
 
     void sd_save_data(){
@@ -159,7 +156,7 @@ namespace actions {
         data_file.close();
     }
 
-    void list_sd_files(sCommand& sC, Stream& S){
+    void cmd_list_sd_files(sCommand& sC, Stream& S){
         File root = SD.open("/");
         while (true) {
             File entry = root.openNextFile();
@@ -172,52 +169,52 @@ namespace actions {
         }
     }
 
-    void list_sd_file_contents(sCommand& sC, Stream& S){
+    void cmd_list_sd_file_contents(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
-            S.println("Missing file name");
+            Serial.println("Missing file name");
         } else {
             const char* filename = sC.current();
             File data_file = SD.open(filename);
             if (data_file) {
                 while (data_file.available()) {
-                    S.write(data_file.read());
+                    Serial.write(data_file.read());
                 }
                 data_file.close();
             } else {
-                S.println("Error opening file");
+                Serial.println("Error opening file");
             }
         }
     }
 
-    void list_sd_file_size(sCommand& sC, Stream& S){
+    void cmd_list_sd_file_size(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
-            S.println("Missing file name");
+            Serial.println("Missing file name");
         } else {
             const char* filename = sC.current();
             File data_file = SD.open(filename);
             if (data_file) {
-                S.println(data_file.size());
+                Serial.println(data_file.size());
                 data_file.close();
             } else {
-                S.println("Error opening file");
+                Serial.println("Error opening file");
             }
         }
     }
 
-    void rm_sd_file(sCommand& sC, Stream& S){
+    void cmd_rm_sd_file(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
-            S.println("Missing file name");
+            Serial.println("Missing file name");
         } else {
             const char* filename = sC.current();
             if (SD.remove(filename)) {
-                S.println("File removed");
+                Serial.println("File removed");
             } else {
-                S.println("Error removing file");
+                Serial.println("Error removing file");
             }
         }
     }
 
-    void set_variable(sCommand& sC, Stream& S){
+    void cmd_set_variable(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
             Serial.println("Missing variable name");
         } else {
@@ -250,7 +247,7 @@ namespace actions {
         }
     }
 
-    void set_metadata(sCommand& sC, Stream& S){
+    void cmd_set_metadata(sCommand& sC, Stream& S){
         if ( sC.next() == NULL) {
             Serial.println("Missing metadata name");
         } else {
@@ -291,7 +288,6 @@ namespace actions {
         digitalWrite(REDLED, LED_OFF);
         globals::tcs.clearInterrupt();
         Serial.println("TCS34725 Init Done.");
-
     }
 
     ////////////////////////////////////////////////////////////
@@ -310,23 +306,23 @@ namespace actions {
         Serial.println("RTC Init Done.");
     }
 
-    void get_rtc_serial(sCommand& sC, Stream& S) {
+    void cmd_get_rtc_serial(sCommand& sC, Stream& S) {
         print_serial_date();
     }
 
-    void update_rtc_serial(sCommand& sC, Stream& S) {
+    void cmd_update_rtc_serial(sCommand& sC, Stream& S) {
 
         if ( sC.next() == NULL) {
-            S.println("Missing new RTC time value (YYYYMMDDHHMMSS)");
+            Serial.println("Missing new RTC time value (YYYYMMDDHHMMSS)");
         } else {
             const char* dateTimeStr = sC.current();
-            S.printf("Received: %s\n", dateTimeStr);
+            Serial.printf("Received: %s\n", dateTimeStr);
             int year, month, day, hour, minute, second;
 
             // Parse the date-time string
             if (sscanf(dateTimeStr, "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &minute, &second) == 6) {
                 // Successfully parsed all components
-                S.printf("Parsed date-time: %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
+                Serial.printf("Parsed date-time: %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
             
                 // Now you can use the parsed values to update the RTC
                 // Example: rtc.adjust(DateTime(year, month, day, hour, minute, second));
@@ -338,7 +334,7 @@ namespace actions {
                 print_serial_date();
 
             } else {
-                S.println("Invalid date-time format. Expected YYYYMMDDHHMMSS.");
+                Serial.println("Invalid date-time format. Expected YYYYMMDDHHMMSS.");
             }
         }
     }
@@ -367,4 +363,58 @@ namespace actions {
         /*It sends the data throught the serial  communication*/
         Serial.println(get_datetime());
     }    
+
+    ////////////////////////////////////////////////////////////
+    ///////////// DATA RECORDING MANAGEMENT ////////////////////
+    ////////////////////////////////////////////////////////////
+
+    void do_sample_collection() {
+        if (globals::isDataCollectionPaused) {
+            return;
+        }
+
+        // Save time
+        actions::sd_save_date();
+        actions::print_serial_date();
+        
+        // Measurement
+        for (int i = 0; i < globals::measures; i++) {
+            actions::measure_TCS34725();
+            actions::sd_save_data();
+            actions::print_serial_rgb_data();
+        }
+        actions::sd_save_new_line();
+    }
+
+    void start_data_recording_process() {
+
+        data::generate_metadata_id();
+        data::generate_filename();
+
+
+        // Write metadata and header into file.txt
+        actions::sd_save_metadata();
+        actions::save_header();
+        // Send metadata and header through serial communication
+        actions::print_serial_metadata();
+        actions::print_serial_header();
+
+        //Set up the actual sample collection schedule
+        globals::mainTimerId = globals::timer.setInterval(globals::period_ms, do_sample_collection);        
+    }
+
+    void cmd_pause_data(sCommand& sC, Stream& S) {
+        globals::isDataCollectionPaused = true;
+    }
+
+    void cmd_resume_data(sCommand& sC, Stream& S) {
+        globals::isDataCollectionPaused = false;
+    }
+
+    void cmd_start_data(sCommand& sC, Stream& S) {
+        
+    }
+
+
+
 }
