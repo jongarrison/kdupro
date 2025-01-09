@@ -44,7 +44,7 @@ namespace actions {
         const char *SAVE = "SAVE";  //Save the metadata into a file
         const char *PAUSE = "PAUSE"; //Pause the data recording
         const char *RESUME = "RESUME"; //Resume the data recording
-        const char *START = "START"; //Resume the data recording
+        const char *START = "START"; //Fully start the data recording
     };
     extern Commands commands; 
 

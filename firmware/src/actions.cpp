@@ -341,7 +341,10 @@ namespace actions {
 
     String get_datetime() {
         //See RTC_millis synching here: https://forums.adafruit.com/viewtopic.php?p=154467#p154467
-
+        /*
+        * The RTClib library does not provide a way to get the milliseconds from the RTC.
+        * So this is a workaround to get the milliseconds from the arduino, but the rest of the time from the RTC.
+        */
         static DateTime now = globals::rtc.now();
         static long nowMillis = millis();
         static char buffer [31] = "";
@@ -387,32 +390,49 @@ namespace actions {
     }
 
     void start_data_recording_process() {
+        if (globals::isDataCollectionPaused) {
+            Serial.println("Data collection is paused. Please resume before starting.");
+            return;
+        }
 
         data::generate_metadata_id();
         data::generate_filename();
 
-
-        // Write metadata and header into file.txt
-        actions::sd_save_metadata();
-        actions::save_header();
-        // Send metadata and header through serial communication
-        actions::print_serial_metadata();
-        actions::print_serial_header();
+        if (SD.exists(globals::filename)) {
+            Serial.print("Data file already exists. Appending to it. WARNING if metadata has changed, it won't be captured in file");
+        } else {
+            // Write metadata and header into file.txt
+            actions::sd_save_metadata();
+            actions::save_header();
+            // Send metadata and header through serial communication
+            actions::print_serial_metadata();
+            actions::print_serial_header();
+        }
 
         //Set up the actual sample collection schedule
+        if (globals::mainTimerId != 0) {
+            globals::timer.deleteTimer(globals::mainTimerId);
+        }
         globals::mainTimerId = globals::timer.setInterval(globals::period_ms, do_sample_collection);        
     }
 
     void cmd_pause_data(sCommand& sC, Stream& S) {
         globals::isDataCollectionPaused = true;
+        S.println("PAUSED");
     }
 
     void cmd_resume_data(sCommand& sC, Stream& S) {
-        globals::isDataCollectionPaused = false;
+        if (globals::mainTimerId == 0) {
+            cmd_start_data(sC, S);
+        } else {
+            globals::isDataCollectionPaused = false;
+            S.println("RESUMED");
+        }
     }
 
     void cmd_start_data(sCommand& sC, Stream& S) {
-        
+        start_data_recording_process();
+        S.println("STARTED");
     }
 
 
