@@ -177,8 +177,9 @@ namespace actions {
             File data_file = SD.open(filename);
             if (data_file) {
                 while (data_file.available()) {
-                    Serial.write(data_file.read());
+                    S.write(data_file.read());
                 }
+                S.println("EOF");
                 data_file.close();
             } else {
                 Serial.println("Error opening file");
@@ -345,9 +346,9 @@ namespace actions {
         * The RTClib library does not provide a way to get the milliseconds from the RTC.
         * So this is a workaround to get the milliseconds from the arduino, but the rest of the time from the RTC.
         */
-        static DateTime now = globals::rtc.now();
-        static long nowMillis = millis();
-        static char buffer [31] = "";
+        DateTime now = globals::rtc.now();
+        long nowMillis = millis();
+        char buffer [31] = "";
         sprintf(
                 buffer, 
                 "%04d-%02d-%02dT%02d:%02d:%02d:%03dZ", 
@@ -422,10 +423,10 @@ namespace actions {
     }
 
     void cmd_resume_data(sCommand& sC, Stream& S) {
+        globals::isDataCollectionPaused = false;
         if (globals::mainTimerId == 0) {
             cmd_start_data(sC, S);
         } else {
-            globals::isDataCollectionPaused = false;
             S.println("RESUMED");
         }
     }
