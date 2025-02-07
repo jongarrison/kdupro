@@ -25,8 +25,11 @@ namespace globals {
     RTC_PCF8523 rtc;
 
     const int chipSelect_SD = 15;
-    Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
-    uint16_t r, g, b, c; 
+    //Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
+    Adafruit_AS7341 as7341 = Adafruit_AS7341();
+
+    // uint16_t r, g, b, c; 
+    uint16_t lightReadings[12];
     String filename;
  
     SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;    

@@ -28,35 +28,73 @@ namespace actions {
     //////////////////// MEASUREMENTS //////////////////////////
     ////////////////////////////////////////////////////////////
 
-    void measure_TCS34725(){
-            
-        uint16_t r_, g_, b_, c_;
-        // Measure
-        globals::tcs.getRawData(&r_, &g_, &b_, &c_);
-        
-        // Save data into global variables
-        globals::r = r_;
-        globals::g = g_;
-        globals::b = b_;
-        globals::c = c_;
-    }
+    void measure_light(){
+        Serial.println("Starting light reading");        
+        globals::as7341.startReading();
+        unsigned long start = millis();
+
+        while (!globals::as7341.checkReadingProgress()) {
+            Serial.print(".");
+            delay(50);
+        }
+
+        Serial.print("Light reading obtained in (ms):");
+        Serial.println(millis() - start);
+
+        //IMPORTANT: make sure readings is a uint16_t array of size 12, otherwise strange things may happen
+        globals::as7341.getAllChannels(globals::lightReadings);  //Calling this any other time may give you old data
+        Serial.println("Let's print the readings");
+        for (int i = 0; i < 12; i++) {
+            Serial.print(globals::lightReadings[i]);
+            if (i < 11) Serial.print(" ");
+        }
+
+        // if (globals::as7341.checkReadingProgress()){
+          
+        //     Serial.print("Light reading obtained in (ms):");
+        //     Serial.println(millis() - start);
+
+        //     //IMPORTANT: make sure readings is a uint16_t array of size 12, otherwise strange things may happen
+        //     globals::as7341.getAllChannels(globals::lightReadings);  //Calling this any other time may give you old data
+        //     Serial.println("Let's print the readings");
+        //     for (int i = 0; i < 12; i++) {
+        //         Serial.print(globals::lightReadings[i]);
+        //         if (i < 11) Serial.print(" ");
+        //     }
+        // } else {
+        //     Serial.println("Error reading all channels!");
+        // }
+        // Serial.println("\nLet's try a reading using readAllChannels (inbuilt delay), waiting...");
+        // if (!globals::as7341.readAllChannels(readings)) {
+        //     Serial.println("Error reading all channels!");
+        // } else {
+        //     printReadings();
+        // }
+        // Serial.println("Guess we'll start another reading right away but do some work in the meantime\n");
+        // as7341.startReading();
+    }    
 
     ////////////////////////////////////////////////////////////
     //////////////////// SERIAL COMMUNICATION //////////////////
     ////////////////////////////////////////////////////////////
 
 
-    void print_serial_rgb_data(){
+    void print_serial_light_data(){
         /*It sends the data throught the serial  communication*/
-        Serial.print(" ");
-        Serial.print(globals::r, DEC);
-        Serial.print(" ");
-        Serial.print(globals::g, DEC);
-        Serial.print(" ");
-        Serial.print(globals::b, DEC);
-        Serial.print(" ");
-        Serial.print(globals::c, DEC);
-        Serial.println("");
+        for (int i = 0; i < 12; i++) {
+            Serial.print(globals::lightReadings[i]);
+            if (i < 11) Serial.print(" ");
+        }        
+        // /*It sends the data throught the serial  communication*/
+        // Serial.print(" ");
+        // Serial.print(globals::r, DEC);
+        // Serial.print(" ");
+        // Serial.print(globals::g, DEC);
+        // Serial.print(" ");
+        // Serial.print(globals::b, DEC);
+        // Serial.print(" ");
+        // Serial.print(globals::c, DEC);
+        // Serial.println("");
     }
 
     void print_serial_metadata() {
@@ -95,7 +133,11 @@ namespace actions {
         /*It sends the header info of the data through the serial
         communication*/
         Serial.println("DATA");
-        Serial.println("DATE HOUR RED GREEN BLUE CLEAR");
+        Serial.print("TIME");
+        for (int i = 0; i < 12; i++) { //For each light channel
+            Serial.print(" L");
+            Serial.print(i);
+        }
     }
 
     ////////////////////////////////////////////////////////////
@@ -111,14 +153,20 @@ namespace actions {
     void sd_save_data(){
         File data_file = sd_open_file();
         // Save data
-        data_file.print(" ");
-        data_file.print(globals::r, DEC);
-        data_file.print(" ");
-        data_file.print(globals::g, DEC);
-        data_file.print(" ");
-        data_file.print(globals::b, DEC);
-        data_file.print(" ");
-        data_file.print(globals::c, DEC); 
+
+        for (int i = 0; i < 12; i++) {
+            data_file.print(" ");
+            data_file.print(globals::lightReadings[i]);
+        }
+
+
+        // data_file.print(globals::r, DEC);
+        // data_file.print(" ");
+        // data_file.print(globals::g, DEC);
+        // data_file.print(" ");
+        // data_file.print(globals::b, DEC);
+        // data_file.print(" ");
+        // data_file.print(globals::c, DEC); 
         data_file.flush();
         data_file.close();
     }
@@ -154,7 +202,11 @@ namespace actions {
     
         // Save header
         data_file.println("DATA"); data_file.flush();
-        data_file.println("TIME RED GREEN BLUE CLEAR");
+        data_file.print("TIME");
+        for (int i = 0; i < 12; i++) { //For each light channel
+            data_file.print(" L");
+            data_file.print(i);
+        }
         data_file.flush();
         // Close dataFile
         data_file.close();
@@ -284,17 +336,34 @@ namespace actions {
         Serial.println("SD Init Done.");
     }
 
-    void init_tcs() {
-        // TCS34725
-        Serial.print("Initializing TCS34725.");
-        while (!globals::tcs.begin()) {
+    void init_lightsensor() {
+        // AS7341
+        Serial.print("Initializing AS7341.");
+        if (!globals::as7341.begin()){
             digitalWrite(REDLED, LED_ON);
-            Serial.println("No TCS34725 found");
+            Serial.println("No AS7341 found");
             delay(INIT_FAILURE_DELAY);
-        }
+          }
+    
+        Serial.println("Setup Atime, ASTEP, Gain");
+        globals::as7341.setATIME(100);
+        globals::as7341.setASTEP(999);
+        globals::as7341.setGain(AS7341_GAIN_256X);
         digitalWrite(REDLED, LED_OFF);
-        globals::tcs.clearInterrupt();
-        Serial.println("TCS34725 Init Done.");
+
+        Serial.println("AS7341 Init Done.");
+
+
+        // // TCS34725
+        // Serial.print("Initializing TCS34725.");
+        // while (!globals::tcs.begin()) {
+        //     digitalWrite(REDLED, LED_ON);
+        //     Serial.println("No TCS34725 found");
+        //     delay(INIT_FAILURE_DELAY);
+        // }
+        // digitalWrite(REDLED, LED_OFF);
+        // globals::tcs.clearInterrupt();
+        // Serial.println("TCS34725 Init Done.");
     }
 
     ////////////////////////////////////////////////////////////
@@ -390,9 +459,9 @@ namespace actions {
         
         // Measurement
         for (int i = 0; i < globals::measures; i++) {
-            actions::measure_TCS34725();
+            actions::measure_light();
             actions::sd_save_data();
-            actions::print_serial_rgb_data();
+            actions::print_serial_light_data();
         }
         actions::sd_save_new_line();
     }

@@ -7,7 +7,8 @@
 #include "RTClib.h"
 #include <ESP8266WiFi.h>
 #include <SimpleTimer.h>
-#include "Adafruit_TCS34725.h"
+//#include "Adafruit_TCS34725.h"
+#include <Adafruit_AS7341.h>
 #include "SimpleDictionary.h"
 #include <array>
 
@@ -44,8 +45,11 @@ namespace globals {
 
     extern sCommand sC;
     extern const int chipSelect_SD;
-    extern Adafruit_TCS34725 tcs;   //Color sensor
-    extern uint16_t r, g, b, c; 
+    //extern Adafruit_TCS34725 tcs;   //Color sensor
+    extern Adafruit_AS7341 as7341; //Spectral sensor
+
+    // extern uint16_t r, g, b, c; 
+    extern uint16_t lightReadings[12];
     extern String filename;
 
     struct metaDataDictConfig {

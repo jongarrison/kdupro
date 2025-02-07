@@ -13,12 +13,12 @@
 namespace actions {
     void init_rtc();
     void init_sd();
-    void init_tcs();
+    void init_lightsensor();
 
     void registerSerialCommands();
     
-    void measure_TCS34725();
-    void print_serial_rgb_data();
+    void measure_light();
+    void print_serial_light_data();
     void print_serial_metadata();
     void print_serial_header();
     void print_serial_date();

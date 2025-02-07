@@ -2,7 +2,8 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#include "Adafruit_TCS34725.h"
+//#include "Adafruit_TCS34725.h"
+#include <Adafruit_AS7341.h>
 #include <ESP8266WiFi.h>
 #include <SimpleTimer.h>
 #include "actions.h"
@@ -43,7 +44,7 @@ void setup () {
     actions::registerSerialCommands();
     actions::init_rtc();
     actions::init_sd();
-    actions::init_tcs();
+    actions::init_lightsensor();
     data::system_data_setup();
 
     // Initial wait
