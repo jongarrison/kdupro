@@ -48,8 +48,6 @@ namespace globals {
     //extern Adafruit_TCS34725 tcs;   //Color sensor
     extern Adafruit_AS7341 as7341; //Spectral sensor
 
-    // extern uint16_t r, g, b, c; 
-    extern uint16_t lightReadings[12];
     extern String filename;
 
     struct metaDataDictConfig {

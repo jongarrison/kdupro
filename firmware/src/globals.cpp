@@ -29,7 +29,6 @@ namespace globals {
     Adafruit_AS7341 as7341 = Adafruit_AS7341();
 
     // uint16_t r, g, b, c; 
-    uint16_t lightReadings[12];
     String filename;
  
     SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;    

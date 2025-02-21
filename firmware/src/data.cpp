@@ -108,7 +108,7 @@ META datetime YYYY-MM-DDThh:mm:ssZ
 
         globals::sensor_id = WiFi.macAddress();
         globals::sensor_id.replace(":", "");
-        globals::platform_id = *globals::metadata["buoy"].data() + String("_") + *globals::metadata["country"].data() + String("_") + *globals::metadata["place"].data();
+        globals::platform_id = globals::metadata["buoy"].data() + String("_") + globals::metadata["country"].data() + String("_") + globals::metadata["place"].data();
         globals::deployment_id = globals::sensor_id + String("_") + globals::metadata["name"].data() + String("_") + globals::metadata["depth"].data() + String("_") + rnd_number;
         globals::sample_id = globals::platform_id + String("_") + time_sample;
         globals::observer_id = globals::metadata["operator_contact"].data() + String("_") + date + String("_") + time_sample;

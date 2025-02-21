@@ -28,8 +28,9 @@ namespace actions {
     //////////////////// MEASUREMENTS //////////////////////////
     ////////////////////////////////////////////////////////////
 
-    void measure_light(){
-        Serial.println("Starting light reading");        
+    std::array<uint16_t, 12>  measure_light(){
+        //see: https://github.com/adafruit/Adafruit_AS7341/blob/master/examples/reading_while_looping/reading_while_looping.ino
+
         globals::as7341.startReading();
         unsigned long start = millis();
 
@@ -38,64 +39,17 @@ namespace actions {
             delay(50);
         }
 
+        std::array<uint16_t, 12> readings;
+        globals::as7341.getAllChannels(readings.data());  //Calling this any other time may give you old data
         Serial.print("Light reading obtained in (ms):");
         Serial.println(millis() - start);
 
-        //IMPORTANT: make sure readings is a uint16_t array of size 12, otherwise strange things may happen
-        globals::as7341.getAllChannels(globals::lightReadings);  //Calling this any other time may give you old data
-        Serial.println("Let's print the readings");
-        for (int i = 0; i < 12; i++) {
-            Serial.print(globals::lightReadings[i]);
-            if (i < 11) Serial.print(" ");
-        }
-
-        // if (globals::as7341.checkReadingProgress()){
-          
-        //     Serial.print("Light reading obtained in (ms):");
-        //     Serial.println(millis() - start);
-
-        //     //IMPORTANT: make sure readings is a uint16_t array of size 12, otherwise strange things may happen
-        //     globals::as7341.getAllChannels(globals::lightReadings);  //Calling this any other time may give you old data
-        //     Serial.println("Let's print the readings");
-        //     for (int i = 0; i < 12; i++) {
-        //         Serial.print(globals::lightReadings[i]);
-        //         if (i < 11) Serial.print(" ");
-        //     }
-        // } else {
-        //     Serial.println("Error reading all channels!");
-        // }
-        // Serial.println("\nLet's try a reading using readAllChannels (inbuilt delay), waiting...");
-        // if (!globals::as7341.readAllChannels(readings)) {
-        //     Serial.println("Error reading all channels!");
-        // } else {
-        //     printReadings();
-        // }
-        // Serial.println("Guess we'll start another reading right away but do some work in the meantime\n");
-        // as7341.startReading();
+        return readings;
     }    
 
     ////////////////////////////////////////////////////////////
     //////////////////// SERIAL COMMUNICATION //////////////////
     ////////////////////////////////////////////////////////////
-
-
-    void print_serial_light_data(){
-        /*It sends the data throught the serial  communication*/
-        for (int i = 0; i < 12; i++) {
-            Serial.print(globals::lightReadings[i]);
-            if (i < 11) Serial.print(" ");
-        }        
-        // /*It sends the data throught the serial  communication*/
-        // Serial.print(" ");
-        // Serial.print(globals::r, DEC);
-        // Serial.print(" ");
-        // Serial.print(globals::g, DEC);
-        // Serial.print(" ");
-        // Serial.print(globals::b, DEC);
-        // Serial.print(" ");
-        // Serial.print(globals::c, DEC);
-        // Serial.println("");
-    }
 
     void print_serial_metadata() {
         print_metadata_to_stream(Serial);
@@ -144,50 +98,40 @@ namespace actions {
     //////////////////// SD MANAGEMENT /////////////////////////
     ////////////////////////////////////////////////////////////
 
-
-
     File sd_open_file() {
         return data::sd_open_file_by_name(globals::filename);
     }
 
-    void sd_save_data(){
-        File data_file = sd_open_file();
-        // Save data
-
-        for (int i = 0; i < 12; i++) {
-            data_file.print(" ");
-            data_file.print(globals::lightReadings[i]);
+    void sd_do_sample_collection() {
+        if (globals::isDataCollectionPaused) {
+            return;
         }
 
-
-        // data_file.print(globals::r, DEC);
-        // data_file.print(" ");
-        // data_file.print(globals::g, DEC);
-        // data_file.print(" ");
-        // data_file.print(globals::b, DEC);
-        // data_file.print(" ");
-        // data_file.print(globals::c, DEC); 
-        data_file.flush();
-        data_file.close();
-    }
-
-    void sd_save_date(){
         File data_file = sd_open_file();
-    
-        // Save data
+
+        // Save time
+        data_file.println(""); 
+
+        Serial.println(get_datetime());
         data_file.print(get_datetime()); 
         data_file.flush();
+        
+        // Measurement
+        for (int i = 0; i < globals::measures; i++) {
+            std::array<uint16_t, 12> readings = actions::measure_light();
 
-        // Close dataFile
-        data_file.close();
-    }
+            for (int i = 0; i < 12; i++) {
+                //SD save
+                data_file.print(" ");
+                data_file.print(readings[i]);
+                data_file.flush();    
 
-    void sd_save_new_line(){
-        File data_file = sd_open_file();
-    
-        // Save new line
-        data_file.println(""); 
-        data_file.flush();
+                //Serial print
+                Serial.print(readings[i]);
+                if (i < 11) Serial.print(" ");
+            }    
+        }
+
         data_file.close();
     }
 
@@ -383,7 +327,7 @@ namespace actions {
     }
 
     void cmd_get_rtc_serial(sCommand& sC, Stream& S) {
-        print_serial_date();
+        Serial.println(get_datetime());
         sendCmdResponseFinish(S);
     }
 
@@ -408,7 +352,7 @@ namespace actions {
 
                 // Read time
                 Serial.println("Real Time Clock Updated");
-                print_serial_date();
+                Serial.println(get_datetime());
 
             } else {
                 Serial.println("Invalid date-time format. Expected YYYYMMDDHHMMSS.");
@@ -439,32 +383,9 @@ namespace actions {
         return String(buffer);
     }    
 
-    void print_serial_date(){
-        /*It sends the data throught the serial  communication*/
-        Serial.println(get_datetime());
-    }    
-
     ////////////////////////////////////////////////////////////
     ///////////// DATA RECORDING MANAGEMENT ////////////////////
     ////////////////////////////////////////////////////////////
-
-    void do_sample_collection() {
-        if (globals::isDataCollectionPaused) {
-            return;
-        }
-
-        // Save time
-        actions::sd_save_date();
-        actions::print_serial_date();
-        
-        // Measurement
-        for (int i = 0; i < globals::measures; i++) {
-            actions::measure_light();
-            actions::sd_save_data();
-            actions::print_serial_light_data();
-        }
-        actions::sd_save_new_line();
-    }
 
     void start_data_recording_process() {
         if (globals::isDataCollectionPaused) {
@@ -490,7 +411,7 @@ namespace actions {
         if (globals::mainTimerId != 0) {
             globals::timer.deleteTimer(globals::mainTimerId);
         }
-        globals::mainTimerId = globals::timer.setInterval(globals::period_ms, do_sample_collection);        
+        globals::mainTimerId = globals::timer.setInterval(globals::period_ms, sd_do_sample_collection);        
     }
 
     void cmd_pause_data(sCommand& sC, Stream& S) {

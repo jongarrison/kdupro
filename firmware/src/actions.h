@@ -9,6 +9,7 @@
 #include <ESP8266WiFi.h>
 #include "globals.h"
 #include "data.h"
+#include <array>
 
 namespace actions {
     void init_rtc();
@@ -17,14 +18,10 @@ namespace actions {
 
     void registerSerialCommands();
     
-    void measure_light();
-    void print_serial_light_data();
+    std::array<uint16_t, 12> measure_light();
     void print_serial_metadata();
     void print_serial_header();
-    void print_serial_date();
-    void sd_save_data();
-    void sd_save_new_line();
-    void sd_save_date();
+    void sd_save_single_data_reading();
     void sd_save_metadata();
     void print_metadata_to_stream(Stream& S);
     void save_header();

@@ -8,6 +8,12 @@ from platformio import exception, fs, util
 import serial
 import os
 
+cmd_setclock = "setclock"
+cmd_checkclock = "checkclock"
+cmd_download = "download"
+cmd_help = "help"
+all_commands = [cmd_setclock, cmd_checkclock, cmd_download, cmd_help]
+
 #print(env.Dump())
 
 serialPortSubstring = "CP2104" #This is info that will be found in the port description
@@ -30,7 +36,6 @@ def get_upload_port_name():
 
 def get_rtc_style_time():
     return time.strftime("%Y%m%d%H%M%S")
-
 
 def setclock_callback(*args, **kwargs):
     uploadPortName = get_upload_port_name()
@@ -124,11 +129,19 @@ def downloadfiles_callback(*args, **kwargs):
         
         print(f"Downloaded {filename}")
 
-
-
+def get_help(*args, **kwargs):
+    print("\n\n==== HELP ===\n")
+    print("The following custom commands are available:")
+    for command in all_commands:
+        print(f"pio run -t {command}")
 
 #These scripts can be run from within the platformio environment by using:
-# pio run -t setclock
-env.AddCustomTarget("setclock", None, setclock_callback)
-env.AddCustomTarget("checkclock", None, checkclock_callback)
-env.AddCustomTarget("download", None, downloadfiles_callback)
+# pio run -t help
+env.AddCustomTarget(cmd_setclock, None, setclock_callback)
+env.AddCustomTarget(cmd_checkclock, None, checkclock_callback)
+env.AddCustomTarget(cmd_download, None, downloadfiles_callback)
+env.AddCustomTarget(cmd_help, None, get_help)
+
+
+get_help() #Print help when the script is loaded
+print(dir(env))
