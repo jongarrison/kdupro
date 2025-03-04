@@ -9,6 +9,7 @@
 #include "actions.h"
 #include "globals.h"
 #include "data.h"
+#include "network.h"
 
 #define IS_KDUPRO_DEBUG_ON 1
 
@@ -22,10 +23,8 @@ void setup () {
     digitalWrite(BLUELED, LED_ON); //On indicates Initialization Period
     //All lights off while measurement session is running
 
-    // Wifi (disable) 
-    WiFi.mode(WIFI_OFF);
-    WiFi.forceSleepBegin();
-    delay(100);
+    // Wifi (start disabled) 
+    network::disable_network();
 
     // Start communication with Serial. Need Wire.begin.
     Wire.begin();

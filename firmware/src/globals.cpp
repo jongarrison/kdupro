@@ -32,4 +32,14 @@ namespace globals {
     String filename;
  
     SimpleDictionary<std::array<char, metaDataDictConfig::valueSize>, metaDataDictConfig::keySize, metaDataDictConfig::elementCount> metadata;    
+
+    /* Soft AP network parameters */
+    const char *softAP_ssid = "HuzzahWIFI";
+    const char *softAP_password = "password"; //No, this is not a critical password at all
+    IPAddress ip_local(192,168,1,1);
+    IPAddress ip_gateway(192,168,1,1);
+    IPAddress ip_subnet(255,255,255,0);
+    ESP8266WebServer espServer(80);
+
+
 }

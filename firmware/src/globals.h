@@ -11,6 +11,7 @@
 #include <Adafruit_AS7341.h>
 #include "SimpleDictionary.h"
 #include <array>
+#include <ESP8266WebServer.h>
 
 #define SERIALCOMMAND_DEBUG
 
@@ -60,6 +61,13 @@ namespace globals {
 
     extern RTC_PCF8523 rtc;
     
+    /* Soft AP network parameters */
+    extern const char *softAP_ssid = "HuzzahWIFI";
+    extern const char *softAP_password = "password"; //No, this is not a critical password at all
+    extern IPAddress ip_local;
+    extern IPAddress ip_gateway;
+    extern IPAddress ip_subnet;
+    extern ESP8266WebServer espServer;
 
 }
 
