@@ -18,7 +18,7 @@ namespace actions {
 
     void registerSerialCommands();
     
-    std::array<uint16_t, 12> measure_light();
+    std::array<uint16_t, 10> measure_light();
     void print_serial_metadata();
     void print_serial_header();
     void sd_save_single_data_reading();

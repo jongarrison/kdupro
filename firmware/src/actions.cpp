@@ -4,6 +4,8 @@ namespace actions {
 
     Commands commands;
 
+    const char* data_header = "TIME F1-415nm F2-445nm F3-480nm F4-515nm F5-555nm F6-590nm F7-630nm F8-680nm Clear Near-IR";
+
     void registerSerialCommands() {
         globals::sC.addCommand(commands.LS_SD, cmd_list_sd_files);
         globals::sC.addCommand(commands.CAT_SD, cmd_list_sd_file_contents);
@@ -28,21 +30,34 @@ namespace actions {
     //////////////////// MEASUREMENTS //////////////////////////
     ////////////////////////////////////////////////////////////
 
-    std::array<uint16_t, 12>  measure_light(){
+    std::array<uint16_t, 10>  measure_light(){
         //see: https://github.com/adafruit/Adafruit_AS7341/blob/master/examples/reading_while_looping/reading_while_looping.ino
 
         globals::as7341.startReading();
         unsigned long start = millis();
 
         while (!globals::as7341.checkReadingProgress()) {
-            Serial.print(".");
-            delay(50);
+            delay(40);
         }
 
-        std::array<uint16_t, 12> readings;
-        globals::as7341.getAllChannels(readings.data());  //Calling this any other time may give you old data
+        //This is probably an improved way to read the data, so that we can be certain which channels are which:
+        //https://learn.adafruit.com/adafruit-as7341-10-channel-light-color-sensor-breakout?view=all
+
+        std::array<uint16_t, 10> readings;
         Serial.print("Light reading obtained in (ms):");
         Serial.println(millis() - start);
+
+        //F1-415nm	F2-445nm	F3-480nm	F4-515nm	F5-555nm	F6-590nm	F7-630nm	F8-680nm	Clear	Near-IR
+        readings[0] = globals::as7341.getChannel(AS7341_CHANNEL_415nm_F1);
+        readings[1] = globals::as7341.getChannel(AS7341_CHANNEL_445nm_F2);
+        readings[2] = globals::as7341.getChannel(AS7341_CHANNEL_480nm_F3);
+        readings[3] = globals::as7341.getChannel(AS7341_CHANNEL_515nm_F4);
+        readings[4] = globals::as7341.getChannel(AS7341_CHANNEL_555nm_F5);
+        readings[5] = globals::as7341.getChannel(AS7341_CHANNEL_590nm_F6);
+        readings[6] = globals::as7341.getChannel(AS7341_CHANNEL_630nm_F7);
+        readings[7] = globals::as7341.getChannel(AS7341_CHANNEL_680nm_F8);
+        readings[8] = globals::as7341.getChannel(AS7341_CHANNEL_CLEAR);
+        readings[9] = globals::as7341.getChannel(AS7341_CHANNEL_NIR);
 
         return readings;
     }    
@@ -84,14 +99,8 @@ namespace actions {
     }
 
     void print_serial_header(){
-        /*It sends the header info of the data through the serial
-        communication*/
         Serial.println("DATA");
-        Serial.print("TIME");
-        for (int i = 0; i < 12; i++) { //For each light channel
-            Serial.print(" L");
-            Serial.print(i);
-        }
+        Serial.println(data_header);
     }
 
     ////////////////////////////////////////////////////////////
@@ -112,13 +121,13 @@ namespace actions {
         // Save time
         data_file.println(""); 
 
-        Serial.println(get_datetime());
+        Serial.print(get_datetime());
         data_file.print(get_datetime()); 
         data_file.flush();
         
         // Measurement
         for (int i = 0; i < globals::measures; i++) {
-            std::array<uint16_t, 12> readings = actions::measure_light();
+            std::array<uint16_t, 10> readings = actions::measure_light();
 
             for (int i = 0; i < 12; i++) {
                 //SD save
@@ -129,6 +138,7 @@ namespace actions {
                 //Serial print
                 Serial.print(readings[i]);
                 if (i < 11) Serial.print(" ");
+                if (i == 11) Serial.println();
             }    
         }
 
@@ -142,17 +152,10 @@ namespace actions {
     }
 
     void save_header(){
-        File data_file = sd_open_file();
-    
-        // Save header
-        data_file.println("DATA"); data_file.flush();
-        data_file.print("TIME");
-        for (int i = 0; i < 12; i++) { //For each light channel
-            data_file.print(" L");
-            data_file.print(i);
-        }
+        File data_file = sd_open_file();    
+        data_file.println("DATA"); 
+        data_file.println(data_header);
         data_file.flush();
-        // Close dataFile
         data_file.close();
     }
 
@@ -290,9 +293,9 @@ namespace actions {
           }
     
         Serial.println("Setup Atime, ASTEP, Gain");
-        globals::as7341.setATIME(100);
-        globals::as7341.setASTEP(999);
-        globals::as7341.setGain(AS7341_GAIN_256X);
+        globals::as7341.setATIME(100); //def 100
+        globals::as7341.setASTEP(500); //def 999
+        globals::as7341.setGain(AS7341_GAIN_128X);
         digitalWrite(REDLED, LED_OFF);
 
         Serial.println("AS7341 Init Done.");

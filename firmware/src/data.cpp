@@ -4,9 +4,9 @@
 namespace data {
 
     const char* settings_default = R"(
-SET initial_wait_s 60
-SET measures 60
-SET period_ms 60000
+SET initial_wait_s 15
+SET measures 1
+SET period_ms 1000
 META depth 0.5
 META name Kdupro01
 META buoy 1
